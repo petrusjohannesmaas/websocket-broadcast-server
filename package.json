@@ -1,0 +1,10 @@
+{
+  "name": "websocket-broadcast-server",
+  "version": "1.0.0",
+  "bin": {
+    "broadcast-server": "./broadcast-server.js"
+  },
+  "dependencies": {
+    "ws": "^8.13.0"
+  }
+}
