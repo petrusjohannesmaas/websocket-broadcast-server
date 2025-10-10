@@ -20,20 +20,20 @@ A simple CLI-based WebSocket broadcast server built with Node.js. This tool lets
 
 All clients connect to the server and send messages that are broadcast to all other connected clients.
 
-## Clone the Repository
+### Clone the Repository
 
 ```bash
 git clone https://github.com/petrusjohannesmaas/websocket-broadcast-server
 cd websocket-broadcast-server
 ```
 
-## Install Dependencies
+### Install Dependencies
 
 ```bash
 npm install
 ```
 
-## Link the CLI Command
+### Link the CLI Command
 
 ```bash
 chmod +x broadcast-server.js
