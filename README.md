@@ -33,11 +33,10 @@ cd websocket-broadcast-server
 npm install
 ```
 
-### Link the CLI Command
+### Create an Alias
 
 ```bash
-chmod +x broadcast-server.js
-sudo npm link
+vim ~/.bashrc
 ```
 
 This will let you run `broadcast-server` globally from anywhere.

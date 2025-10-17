@@ -5,10 +5,10 @@ const readline = require("readline");
 function startClient(serverUrl = "ws://localhost:8080") {
     const ws = new WebSocket(serverUrl);
     let rl;
-    let nickname = process.env.NICKNAME || "anonymous";
+    let nickname = process.env.NICKNAME || "Anonymous";
 
     ws.on("open", () => {
-        console.log(`Connected to ${serverUrl}`);
+        console.log(`✅ Connected to ${serverUrl}`);
 
         rl = readline.createInterface({
             input: process.stdin,
@@ -18,7 +18,7 @@ function startClient(serverUrl = "ws://localhost:8080") {
         rl.question("Enter your nickname: ", (name) => {
             if (name.trim()) nickname = name.trim();
 
-            rl.setPrompt(`${nickname}> `);
+            rl.setPrompt(`${nickname} > `);
             rl.prompt();
 
             rl.on("line", (msg) => {
