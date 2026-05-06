@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,15 +14,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
-}
-
 type Server struct {
-	Port       int
-	clients   map[*websocket.Conn]bool
-	mu        sync.RWMutex
-	upgrader  websocket.Upgrader
+	Port     int
+	clients  map[*websocket.Conn]bool
+	mu       sync.Mutex
+	upgrader websocket.Upgrader
+	http     *http.Server
 }
 
 func NewServer(port int) *Server {
@@ -35,21 +33,28 @@ func NewServer(port int) *Server {
 }
 
 func (s *Server) Start() error {
-	httpAddr := fmt.Sprintf("0.0.0.0:%d", s.Port)
-	log.Printf("Broadcast server running at ws://localhost:%d", s.Port)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", s.handleWebSocket)
 
-	http.HandleFunc("/ws", s.handleWebSocket)
+	s.http = &http.Server{
+		Addr:    fmt.Sprintf("0.0.0.0:%d", s.Port),
+		Handler: mux,
+	}
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGINT)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-sigChan
-		log.Println("\nServer is shutting down...")
+		log.Println("Server shutting down...")
 		s.shutdown()
 	}()
 
-	return http.ListenAndServe(httpAddr, nil)
+	log.Printf("Broadcast server running at ws://localhost:%d", s.Port)
+	if err := s.http.ListenAndServe(); err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -64,57 +69,53 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 
 	log.Println("Client connected.")
-
 	go s.handleMessages(conn)
 }
 
 func (s *Server) handleMessages(conn *websocket.Conn) {
 	defer func() {
-		conn.Close()
 		s.mu.Lock()
 		delete(s.clients, conn)
 		s.mu.Unlock()
+		conn.Close()
 		log.Println("Client disconnected.")
 	}()
 
 	for {
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
-			if _, ok := err.(*websocket.CloseError); ok {
-				break
+			if _, ok := err.(*websocket.CloseError); !ok {
+				log.Printf("Client error: %v", err)
 			}
-			log.Printf("Client error: %v", err)
-			break
+			return
 		}
-
 		log.Printf("Broadcasting: %s", message)
 		s.broadcast(message, conn, messageType)
 	}
 }
 
 func (s *Server) broadcast(message []byte, sender *websocket.Conn, messageType int) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	for client := range s.clients {
-		if client != sender && client.WriteMessage(messageType, message) != nil {
-			log.Printf("Error broadcasting to client")
+		if client != sender {
+			if err := client.WriteMessage(messageType, message); err != nil {
+				log.Printf("broadcast error: %v", err)
+			}
 		}
 	}
 }
 
 func (s *Server) shutdown() {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
+	s.mu.Lock()
 	for client := range s.clients {
-		client.WriteControl(websocket.CloseMessage, []byte("Server shutting down"), time.Now().Add(5*time.Second))
+		client.WriteControl(websocket.CloseMessage, []byte("Server shutting down"), time.Now().Add(time.Second))
 		client.Close()
 	}
-}
+	s.mu.Unlock()
 
-var globalServer *Server
-
-func GetTestServer() *Server {
-	return globalServer
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	s.http.Shutdown(ctx)
 }

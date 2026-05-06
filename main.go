@@ -26,7 +26,7 @@ func main() {
 		log.Fatal(server.Start())
 	} else if command == "connect" {
 		reader := bufio.NewReader(os.Stdin)
-		url := fmt.Sprintf("ws://%s:%d", *host, *port)
+		url := fmt.Sprintf("ws://%s:%d/ws", *host, *port)
 		client := NewClient(url, "", reader)
 		err := client.Connect()
 		if err != nil {
