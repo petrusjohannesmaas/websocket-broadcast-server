@@ -15,6 +15,7 @@ import (
 )
 
 type Server struct {
+	Host     string
 	Port     int
 	clients  map[*websocket.Conn]bool
 	mu       sync.Mutex
@@ -22,8 +23,9 @@ type Server struct {
 	http     *http.Server
 }
 
-func NewServer(port int) *Server {
+func NewServer(host string, port int) *Server {
 	return &Server{
+		Host:    host,
 		Port:    port,
 		clients: make(map[*websocket.Conn]bool),
 		upgrader: websocket.Upgrader{
@@ -37,7 +39,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/ws", s.handleWebSocket)
 
 	s.http = &http.Server{
-		Addr:    fmt.Sprintf("0.0.0.0:%d", s.Port),
+		Addr:    fmt.Sprintf("%s:%d", s.Host, s.Port),
 		Handler: mux,
 	}
 
@@ -50,7 +52,7 @@ func (s *Server) Start() error {
 		s.shutdown()
 	}()
 
-	log.Printf("Broadcast server running at ws://localhost:%d", s.Port)
+	log.Printf("Broadcast server running on port %d", s.Port)
 	if err := s.http.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}
@@ -109,11 +111,16 @@ func (s *Server) broadcast(message []byte, sender *websocket.Conn, messageType i
 
 func (s *Server) shutdown() {
 	s.mu.Lock()
+	clients := make([]*websocket.Conn, 0, len(s.clients))
 	for client := range s.clients {
+		clients = append(clients, client)
+	}
+	s.mu.Unlock()
+
+	for _, client := range clients {
 		client.WriteControl(websocket.CloseMessage, []byte("Server shutting down"), time.Now().Add(time.Second))
 		client.Close()
 	}
-	s.mu.Unlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
