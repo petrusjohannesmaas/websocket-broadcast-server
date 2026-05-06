@@ -10,7 +10,7 @@ import (
 
 func main() {
 	port := flag.Int("port", 8080, "port to listen on")
-	url := flag.String("url", "ws://localhost:8080", "server URL to connect to")
+	host := flag.String("host", "localhost", "host to connect to")
 	flag.Parse()
 
 	if len(os.Args) < 2 {
@@ -26,7 +26,8 @@ func main() {
 		log.Fatal(server.Start())
 	} else if command == "connect" {
 		reader := bufio.NewReader(os.Stdin)
-		client := NewClient(*url, "", reader)
+		url := fmt.Sprintf("ws://%s:%d", *host, *port)
+		client := NewClient(url, "", reader)
 		err := client.Connect()
 		if err != nil {
 			log.Fatalf("Connection failed: %v", err)

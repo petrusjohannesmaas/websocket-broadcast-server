@@ -35,7 +35,7 @@ func NewServer(port int) *Server {
 }
 
 func (s *Server) Start() error {
-	httpAddr := fmt.Sprintf(":%d", s.Port)
+	httpAddr := fmt.Sprintf("0.0.0.0:%d", s.Port)
 	log.Printf("Broadcast server running at ws://localhost:%d", s.Port)
 
 	http.HandleFunc("/ws", s.handleWebSocket)
