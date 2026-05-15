@@ -23,10 +23,8 @@ type Server struct {
 	http     *http.Server
 }
 
-func NewServer(host string, port int) *Server {
+func NewServer() *Server {
 	return &Server{
-		Host:    host,
-		Port:    port,
 		clients: make(map[*websocket.Conn]bool),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },

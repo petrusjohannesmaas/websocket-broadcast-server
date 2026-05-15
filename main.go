@@ -27,7 +27,9 @@ func main() {
 		if *remote {
 			bindHost = "0.0.0.0"
 		}
-		server := NewServer(bindHost, *port)
+		server := NewServer()
+		server.Host = bindHost
+		server.Port = *port
 		log.Printf("Starting server on %s:%d", bindHost, *port)
 		if err := server.Start(); err != nil {
 			log.Fatal(err)
